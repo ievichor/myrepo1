@@ -2,9 +2,11 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <err.h>
 
-char buf[128];
-
+int gMyTraceFd = 0;
+char gBuf[128];
+/*
 int f1()
 {
 	int res = 0;
@@ -42,21 +44,51 @@ int f1()
 	printf("res:%d\n", res);
 	return 0;
 }
-
-int f2()
+*/
+int redirect2null()
 {
 	int res = 0;
-	int log_fd = 0;
+	int null_fd = 0;
 	const char* s = NULL;
 
-	log_fd = open("log", O_RDWR | O_CREAT, 0664);
-	res = dup2(log_fd, 1);
-	res = close(log_fd);
+	null_fd = open("/dev/null", O_RDWR);
+	sprintf(gBuf, "null_fd:%d\n", null_fd);		write(gMyTraceFd, gBuf, strlen(gBuf));
+
+	res = dup2(null_fd, STDOUT_FILENO);
+	sprintf(gBuf, "dup2 res:%d\n", res);		write(gMyTraceFd, gBuf, strlen(gBuf));
 
 	// write
 	s = "hi-write\n";
 	res = write(1, s, strlen(s));
+	sprintf(gBuf, "write res:%d\n", res);		write(gMyTraceFd, gBuf, strlen(gBuf));
 	res = printf("hi-printf\n");
+	sprintf(gBuf, "printf res:%d\n", res);		write(gMyTraceFd, gBuf, strlen(gBuf));
+	printf("-----\n");
+
+	return 0;
+}
+
+int redirect2file()
+{
+	int res = 0;
+	int file_fd = 0;
+	const char* s = NULL;
+
+	file_fd = open("myfile", O_RDWR | O_CREAT, 0664);
+	sprintf(gBuf, "file_fd:%d\n", file_fd);		write(gMyTraceFd, gBuf, strlen(gBuf));
+
+	res = dup2(file_fd, STDOUT_FILENO);
+	sprintf(gBuf, "dup2 res:%d\n", res);		write(gMyTraceFd, gBuf, strlen(gBuf));
+
+	res = close(file_fd);
+	sprintf(gBuf, "close res:%d\n", res);		write(gMyTraceFd, gBuf, strlen(gBuf));
+
+	// write
+	s = "hi-write\n";
+	res = write(STDOUT_FILENO, s, strlen(s));
+	sprintf(gBuf, "write res:%d\n", res);		write(gMyTraceFd, gBuf, strlen(gBuf));
+	res = printf("hi-printf\n");
+	sprintf(gBuf, "printf res:%d\n", res);		write(gMyTraceFd, gBuf, strlen(gBuf));
 	printf("-----\n");
 
 	return 0;
@@ -64,5 +96,7 @@ int f2()
 
 int main()
 {
-	f2();
+	gMyTraceFd = open("mytrace", O_RDWR | O_CREAT | O_TRUNC, 0664);
+//	redirect2null();
+	redirect2file();
 }
